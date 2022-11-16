@@ -30,39 +30,44 @@ class addPbooks{
         $this->postMessage();
       }
     }
+    # More than one, make it happen
+    else{
+      # array to contain all set member mmsIds from one or more API calls
+      $allMembers=array();
 
-    # array to contain all set member mmsIds from one or more API calls
-    $allMembers=array();
+      $cycles= ceil($count/100);
+      $limit=100;
+      $offset=0;
+      for($i=1;$i<=$cycles;$i++){
+        $offset=($i-1)*100;
 
-    $cycles= ceil($count/100);
-    $limit=100;
-    $offset=0;
-    for($i=1;$i<=$cycles;$i++){
-      $offset=($i-1)*100;
+        $members=$this->getSetMembers(100,$offset,false);
+        $allMembers=array_merge($allMembers, $members);
+      }
 
-      $members=$this->getSetMembers(100,$offset,false);
-      $allMembers=array_merge($allMembers, $members);
+      $updated=0;
+      #loop through all mmsIds, get Bib record, add 972 field, repost to Alma
+      foreach($allMembers as $mmsId){
+          $bib=$this->getBibRecord($mmsId);
+          $updatedXml=$this->add972($bib);
+          if($this->updateBib($mmsId, $updatedXml)){
+            $updated++;
+          }
+      }
+
+      #post results to Slack, because why not
+      if($this->postToSlack==true){
+        $emojis=array(":peach:", ":kiwifruit:",":melon:",":grapes:",":lemon:",":banana:",":pineapple:",":tangerine:",":pear:",":cherries:",":avocado:");
+        $key=array_rand($emojis, 1);
+        # pick random emoji
+        $emoji=$emojis[$key];
+        $this->message="$updated Summit brief bib records updated with 972 field set to 'pbooks'. $emoji";
+        $this->postMessage();
+      }
+
     }
 
-    $updated=0;
-    #loop through all mmsIds, get Bib record, add 972 field, repost to Alma
-    foreach($allMembers as $mmsId){
-        $bib=$this->getBibRecord($mmsId);
-        $updatedXml=$this->add972($bib);
-        if($this->updateBib($mmsId, $updatedXml)){
-          $updated++;
-        }
-    }
 
-    #post results to Slack, because why not
-    if($this->postToSlack==true){
-      $emojis=array(":peach:", ":kiwifruit:",":melon:",":grapes:",":lemon:",":banana:",":pineapple:",":tangerine:",":pear:",":cherries:",":avocado:");
-      $key=array_rand($emojis, 1);
-      //echo $key;
-      $emoji=$emojis[$key];
-      $this->message="$updated Summit brief bib records updated with 972 field set to 'pbooks'. $emoji";
-      $this->postMessage();
-    }
 
   }
 
